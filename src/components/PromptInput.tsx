@@ -37,6 +37,7 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Support both Cmd+Enter (Mac) and Ctrl+Enter (Windows/Linux/Mobile)
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !isGenerating) {
       e.preventDefault();
       handleSubmit();
@@ -76,10 +77,10 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="OpenRouter API Key (sk-or-...)"
-                className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-muted outline-none"
+                className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-muted outline-none min-w-0"
               />
               {apiKey && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <div className="w-1.5 h-1.5 rounded-full bg-teal-accent" />
                   <span className="text-xs text-teal-accent">Saved</span>
                 </div>
@@ -92,7 +93,7 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
       {/* Main Input */}
       <div className="relative rounded-2xl bg-base-100 border border-surface-border focus-within:border-accent/50 transition-colors shadow-card">
         {/* Top toolbar */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="flex items-center justify-between px-3 md:px-4 pt-3 pb-1">
           <div className="flex items-center gap-2">
             <Wand2 size={13} className="text-accent-glow" />
             <span className="text-xs font-medium text-text-muted">Website Prompt</span>
@@ -103,7 +104,8 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-base-200 hover:bg-base-300 text-text-muted hover:text-text-secondary text-xs transition-colors"
             >
               <Sparkles size={10} />
-              Ideas
+              <span className="hidden sm:inline">Ideas</span>
+              <span className="sm:hidden">💡</span>
             </button>
           </div>
         </div>
@@ -115,14 +117,14 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
           onChange={(e) => { setPrompt(e.target.value); autoResize(); }}
           onKeyDown={handleKeyDown}
           disabled={isGenerating}
-          placeholder="Deskripsikan website impianmu... misalnya: 'Buat landing page untuk agency desain premium dengan tema monochrome, font editorial, hero full screen dengan typo besar-besar, dan grid portofolio cinematic'"
+          placeholder="Deskripsikan website impianmu..."
           rows={3}
-          className="w-full bg-transparent text-text-primary placeholder-text-muted text-sm leading-relaxed px-4 py-2 resize-none outline-none disabled:opacity-50"
+          className="w-full bg-transparent text-text-primary placeholder-text-muted text-sm leading-relaxed px-3 md:px-4 py-2 resize-none outline-none disabled:opacity-50"
           style={{ minHeight: 80, maxHeight: 200 }}
         />
 
         {/* Bottom toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-surface-border">
+        <div className="flex items-center justify-between px-3 md:px-4 py-2.5 border-t border-surface-border">
           <div className="flex items-center gap-2">
             {prompt.length > 0 && (
               <span className="text-xs text-text-muted">{prompt.length} chars</span>
@@ -130,13 +132,14 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted hidden sm:block">⌘↵ to send</span>
+            {/* Show Ctrl+Enter on Windows/mobile, Cmd+Enter on Mac */}
+            <span className="text-xs text-text-muted hidden sm:block">Ctrl+↵ to send</span>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={handleSubmit}
               disabled={!prompt.trim() || (!apiKey.trim() && !ENV.hasEnvKey) || isGenerating}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: !prompt.trim() || !apiKey.trim() || isGenerating
                   ? undefined
@@ -150,7 +153,8 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
               {isGenerating ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
+                  <span className="hidden sm:inline">Generating...</span>
+                  <span className="sm:hidden">...</span>
                 </>
               ) : (
                 <>
@@ -177,7 +181,7 @@ export default function PromptInput({ onSubmit, status }: PromptInputProps) {
                 ✦ Prompt Ideas
               </p>
             </div>
-            <div className="flex flex-col divide-y divide-surface-border">
+            <div className="flex flex-col divide-y divide-surface-border max-h-60 overflow-y-auto">
               {PROMPT_SUGGESTIONS.map((s, i) => (
                 <button
                   key={i}

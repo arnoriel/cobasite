@@ -30,6 +30,8 @@ import {
   CheckCircle,
   XCircle,
   RotateCcw,
+  ChevronDown,
+  MoreHorizontal,
 } from 'lucide-react';
 import type { Website } from '../types';
 import { storage } from '../lib/storage';
@@ -86,13 +88,32 @@ export default function PreviewPage() {
   const [allWebsites, setAllWebsites] = useState<Website[]>([]);
   const [showSwitcher, setShowSwitcher] = useState(false);
 
-  // ── Code panel tabs (View / Edit) ──────────────────────────
+  // Mobile-specific state
+  const [showMobileMore, setShowMobileMore] = useState(false);
+  // On mobile, code panel is a bottom sheet; on desktop it's a side panel
+  const [codePanelMode, setCodePanelMode] = useState<'side' | 'bottom'>('side');
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setCodePanelMode(window.innerWidth < 768 ? 'bottom' : 'side');
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // On mobile, viewport always acts like 'mobile' view
+  useEffect(() => {
+    if (codePanelMode === 'bottom' && viewportMode === 'desktop') {
+      setViewportMode('mobile');
+    }
+  }, [codePanelMode]);
+
   const [codePanelTab, setCodePanelTab] = useState<CodePanelTab>('view');
   const [manualEditValue, setManualEditValue] = useState('');
   const [manualSaved, setManualSaved] = useState(false);
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Ask-for-Edit state ─────────────────────────────────────
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -100,14 +121,12 @@ export default function PreviewPage() {
   const [editSuccess, setEditSuccess] = useState(false);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Surgical-edit streaming state
   const [streamingRaw, setStreamingRaw] = useState('');
   const [patches, setPatches] = useState<PatchEntry[]>([]);
   const [diffStats, setDiffStats] = useState<{ added: number; removed: number } | null>(null);
   const streamingEndRef = useRef<HTMLDivElement>(null);
   const prevSourceRef = useRef<string>('');
 
-  // ── Save & Deploy state ────────────────────────────────────
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [pageName, setPageName] = useState('');
   const [pageSlug, setPageSlug] = useState('');
@@ -115,14 +134,9 @@ export default function PreviewPage() {
   const [deployedUrl, setDeployedUrl] = useState('');
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // ── Init — FIXED: pakai async/await ───────────────────────
   useEffect(() => {
     if (!id) { setNotFound(true); return; }
-
-    // Load all websites for switcher
     storage.getAll().then(setAllWebsites);
-
-    // Load current website by id
     storage.getById(id).then((site) => {
       if (!site) { setNotFound(true); return; }
       setWebsite(site);
@@ -133,12 +147,10 @@ export default function PreviewPage() {
     });
   }, [id]);
 
-  // Auto-scroll streaming panel
   useEffect(() => {
     streamingEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [streamingRaw, patches]);
 
-  // ── iframe helpers ─────────────────────────────────────────
   const iframeWrittenRef = useRef(false);
 
   const writeIframe = useCallback((code: string) => {
@@ -194,7 +206,6 @@ export default function PreviewPage() {
     setShowSwitcher(false);
   };
 
-  // ── Manual Code Editor ─────────────────────────────────────
   const openManualEditor = () => {
     if (!website) return;
     setManualEditValue(website.source_code);
@@ -223,7 +234,6 @@ export default function PreviewPage() {
     setManualSaved(false);
   };
 
-  // ── Ask for Edit (Surgical) ────────────────────────────────
   const handleEditOpen = () => {
     setShowEditPanel((p) => !p);
     setEditError('');
@@ -303,7 +313,6 @@ export default function PreviewPage() {
     }
   };
 
-  // ── Save & Deploy ──────────────────────────────────────────
   const handleDeployOpen = () => {
     setShowDeployModal(true);
     setDeploySuccess(false);
@@ -339,7 +348,6 @@ export default function PreviewPage() {
     navigate(`/websites/${website.id}/${pageSlug}`);
   };
 
-  // ── Not found ──────────────────────────────────────────────
   if (notFound) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-base text-center px-6">
@@ -365,6 +373,7 @@ export default function PreviewPage() {
 
   const currentViewport = viewportSizes[viewportMode];
   const linesTotal = website.source_code.split('\n').length;
+  const isMobileView = codePanelMode === 'bottom';
 
   return (
     <div className={`flex flex-col h-screen bg-base ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
@@ -376,27 +385,28 @@ export default function PreviewPage() {
             initial={{ y: -48, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -48, opacity: 0 }}
-            className="flex items-center gap-3 px-4 py-3 border-b border-surface-border bg-base-50 flex-shrink-0"
+            className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-surface-border bg-base-50 flex-shrink-0"
           >
             {/* Back */}
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary text-xs font-medium transition-colors flex-shrink-0"
             >
-              <ArrowLeft size={12} /> Back
+              <ArrowLeft size={12} />
+              <span className="hidden sm:inline">Back</span>
             </button>
 
             {/* Website switcher */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowSwitcher((s) => !s)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-100 hover:bg-base-200 text-xs transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-base-100 hover:bg-base-200 text-xs transition-colors"
               >
                 <div className="w-5 h-5 rounded-md bg-accent-muted flex items-center justify-center">
                   <Globe size={10} className="text-accent-glow" />
                 </div>
-                <span className="font-semibold text-text-primary max-w-[180px] truncate">{website.name}</span>
-                <span className="text-text-muted">▾</span>
+                <span className="font-semibold text-text-primary max-w-[100px] sm:max-w-[180px] truncate">{website.name}</span>
+                <ChevronDown size={10} className="text-text-muted" />
               </button>
               <AnimatePresence>
                 {showSwitcher && (
@@ -404,7 +414,7 @@ export default function PreviewPage() {
                     initial={{ opacity: 0, y: -6, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                    className="absolute top-full left-0 mt-1.5 w-72 bg-base-50 border border-surface-border rounded-xl shadow-card-hover overflow-hidden z-50"
+                    className="absolute top-full left-0 mt-1.5 w-64 sm:w-72 bg-base-50 border border-surface-border rounded-xl shadow-card-hover overflow-hidden z-50"
                   >
                     <div className="px-3 py-2 border-b border-surface-border">
                       <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Switch Website</p>
@@ -432,8 +442,8 @@ export default function PreviewPage() {
               </AnimatePresence>
             </div>
 
-            {/* Viewport controls */}
-            <div className="flex items-center gap-1 px-1 py-1 rounded-lg bg-base-100 border border-surface-border mx-auto">
+            {/* Viewport controls — hidden on mobile (always mobile view there) */}
+            <div className="hidden sm:flex items-center gap-1 px-1 py-1 rounded-lg bg-base-100 border border-surface-border mx-auto">
               {([
                 { mode: 'desktop', icon: Monitor },
                 { mode: 'tablet', icon: Tablet },
@@ -442,59 +452,25 @@ export default function PreviewPage() {
                 <button
                   key={mode}
                   onClick={() => setViewportMode(mode)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
                     viewportMode === mode ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-base-200'
                   }`}
                 >
                   <Icon size={12} />
-                  <span className="hidden sm:inline">{viewportSizes[mode].label}</span>
+                  <span className="hidden md:inline">{viewportSizes[mode].label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Right actions */}
-            <div className="flex items-center gap-1">
-              <button onClick={handleRefresh} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Refresh">
-                <RefreshCw size={13} />
-              </button>
+            {/* Spacer on mobile */}
+            <div className="flex-1 sm:hidden" />
 
-              <button
-                onClick={() => {
-                  if (showCode && codePanelTab === 'edit') {
-                    handleManualDiscard();
-                  }
-                  setShowCode((s) => !s);
-                }}
-                className={`p-2 rounded-lg transition-colors ${
-                  showCode ? 'bg-accent-muted text-accent-glow' : 'bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary'
-                }`}
-                title="View / Edit Code"
-              >
-                <Code2 size={13} />
-              </button>
-
-              <button onClick={copyCode} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Copy HTML">
-                {copied ? <Check size={13} className="text-teal-accent" /> : <Copy size={13} />}
-              </button>
-              <button onClick={openInNewTab} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Open in New Tab">
-                <ExternalLink size={13} />
-              </button>
-              <button onClick={() => setFullscreen((f) => !f)} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Fullscreen">
-                {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-              </button>
-
-              <button
-                onClick={openManualEditor}
-                className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary border-surface-border"
-                title="Edit code manually"
-              >
-                <Pencil size={12} />
-                <span className="hidden sm:inline">Edit Code</span>
-              </button>
-
+            {/* Right actions — primary ones always visible, secondary in "more" on mobile */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Always visible: Ask AI + Deploy */}
               <button
                 onClick={handleEditOpen}
-                className={`flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
                   showEditPanel
                     ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
                     : 'bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary border-surface-border'
@@ -506,19 +482,102 @@ export default function PreviewPage() {
 
               <button
                 onClick={handleDeployOpen}
-                className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95"
                 style={{ background: 'linear-gradient(135deg, #7C5CFC, #5A3DE8)' }}
               >
                 <Rocket size={12} />
                 <span className="hidden sm:inline">Deploy</span>
               </button>
 
-              <button
-                onClick={downloadHTML}
-                className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/70 hover:text-white bg-base-100 hover:bg-base-200 border border-surface-border transition-all"
-              >
-                ↓ Download
-              </button>
+              {/* Desktop-only secondary actions */}
+              <div className="hidden sm:flex items-center gap-1">
+                <button onClick={handleRefresh} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Refresh">
+                  <RefreshCw size={13} />
+                </button>
+                <button
+                  onClick={() => {
+                    if (showCode && codePanelTab === 'edit') handleManualDiscard();
+                    setShowCode((s) => !s);
+                  }}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showCode ? 'bg-accent-muted text-accent-glow' : 'bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary'
+                  }`}
+                  title="View / Edit Code"
+                >
+                  <Code2 size={13} />
+                </button>
+                <button onClick={copyCode} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Copy HTML">
+                  {copied ? <Check size={13} className="text-teal-accent" /> : <Copy size={13} />}
+                </button>
+                <button onClick={openInNewTab} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Open in New Tab">
+                  <ExternalLink size={13} />
+                </button>
+                <button onClick={() => setFullscreen((f) => !f)} className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors" title="Fullscreen">
+                  {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                </button>
+                <button
+                  onClick={openManualEditor}
+                  className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary border-surface-border"
+                >
+                  <Pencil size={12} />
+                  Edit Code
+                </button>
+                <button
+                  onClick={downloadHTML}
+                  className="flex items-center gap-1.5 ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/70 hover:text-white bg-base-100 hover:bg-base-200 border border-surface-border transition-all"
+                >
+                  ↓ Download
+                </button>
+              </div>
+
+              {/* Mobile "more" button */}
+              <div className="relative sm:hidden">
+                <button
+                  onClick={() => setShowMobileMore((s) => !s)}
+                  className="p-2 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors"
+                >
+                  <MoreHorizontal size={15} />
+                </button>
+                <AnimatePresence>
+                  {showMobileMore && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setShowMobileMore(false)}
+                        className="fixed inset-0 z-40"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        className="absolute right-0 top-full mt-1.5 w-48 bg-base-50 border border-surface-border rounded-xl shadow-card-hover overflow-hidden z-50"
+                      >
+                        <button onClick={() => { handleRefresh(); setShowMobileMore(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs text-text-secondary hover:bg-surface-hover transition-colors">
+                          <RefreshCw size={13} className="text-text-muted" /> Refresh
+                        </button>
+                        <button onClick={() => { setShowCode((s) => !s); setShowMobileMore(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs text-text-secondary hover:bg-surface-hover transition-colors">
+                          <Code2 size={13} className="text-text-muted" /> {showCode ? 'Hide Code' : 'View Code'}
+                        </button>
+                        <button onClick={() => { openManualEditor(); setShowMobileMore(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs text-text-secondary hover:bg-surface-hover transition-colors">
+                          <Pencil size={13} className="text-text-muted" /> Edit Code
+                        </button>
+                        <button onClick={() => { copyCode(); setShowMobileMore(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs text-text-secondary hover:bg-surface-hover transition-colors">
+                          {copied ? <Check size={13} className="text-teal-accent" /> : <Copy size={13} className="text-text-muted" />}
+                          Copy HTML
+                        </button>
+                        <button onClick={() => { openInNewTab(); setShowMobileMore(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs text-text-secondary hover:bg-surface-hover transition-colors">
+                          <ExternalLink size={13} className="text-text-muted" /> Open in Browser
+                        </button>
+                        <button onClick={() => { downloadHTML(); setShowMobileMore(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-xs text-text-secondary hover:bg-surface-hover transition-colors">
+                          <ArrowLeft size={13} className="text-text-muted rotate-[-90deg]" /> Download HTML
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </motion.header>
         )}
@@ -526,234 +585,152 @@ export default function PreviewPage() {
 
       {/* ── Main content ─────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden relative flex-col">
-        <div className="flex-1 flex overflow-hidden relative">
 
-          {/* Iframe */}
-          <div
-            className={`flex-1 flex items-start justify-center overflow-auto bg-zinc-900 transition-all ${showCode ? 'w-1/2' : 'w-full'}`}
-            style={{ padding: viewportMode !== 'desktop' ? '24px' : '0' }}
-          >
+        {/* ── Desktop layout: side by side ─────────────────── */}
+        {!isMobileView && (
+          <div className="flex-1 flex overflow-hidden relative">
+            {/* Iframe */}
             <div
-              className="relative transition-all duration-300 bg-white"
-              style={{
-                width: currentViewport.width,
-                minHeight: '100%',
-                boxShadow: viewportMode !== 'desktop' ? '0 8px 40px rgba(0,0,0,0.6)' : 'none',
-                borderRadius: viewportMode !== 'desktop' ? '12px' : '0',
-                overflow: 'hidden',
-              }}
+              className={`flex-1 flex items-start justify-center overflow-auto bg-zinc-900 transition-all ${showCode ? 'w-1/2' : 'w-full'}`}
+              style={{ padding: viewportMode !== 'desktop' ? '24px' : '0' }}
             >
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-base-50 z-10">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-                    <p className="text-xs text-text-muted">Loading preview…</p>
-                  </div>
-                </div>
-              )}
-              <iframe
-                ref={iframeRef}
-                onLoad={handleIframeLoad}
-                className="w-full border-0"
-                style={{ height: viewportMode !== 'desktop' ? '812px' : '100vh', display: 'block' }}
-                title={`Preview: ${website.name}`}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              />
-            </div>
-          </div>
-
-          {/* ── Code panel ──────────────────────────────────── */}
-          <AnimatePresence>
-            {showCode && (
-              <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: '50%', opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                className="border-l border-surface-border bg-base-50 overflow-hidden flex flex-col"
+              <div
+                className="relative transition-all duration-300 bg-white"
+                style={{
+                  width: currentViewport.width,
+                  minHeight: '100%',
+                  boxShadow: viewportMode !== 'desktop' ? '0 8px 40px rgba(0,0,0,0.6)' : 'none',
+                  borderRadius: viewportMode !== 'desktop' ? '12px' : '0',
+                  overflow: 'hidden',
+                }}
               >
-                {/* Code panel header */}
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-border bg-base-100 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    {!isEditing && (
-                      <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-base-200">
-                        <button
-                          onClick={() => setCodePanelTab('view')}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                            codePanelTab === 'view' ? 'bg-base-50 text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
-                          }`}
-                        >
-                          <Eye size={11} /> View
-                        </button>
-                        <button
-                          onClick={openManualEditor}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                            codePanelTab === 'edit' ? 'bg-base-50 text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
-                          }`}
-                        >
-                          <Pencil size={11} /> Edit
-                        </button>
-                      </div>
-                    )}
-
-                    {isEditing && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-md bg-violet-500/15 flex items-center justify-center">
-                          <Terminal size={10} className="text-violet-400" />
-                        </div>
-                        <span className="text-xs font-semibold text-violet-300">AI Editing…</span>
-                        <div className="flex gap-0.5">
-                          <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    )}
-
-                    {!isEditing && (
-                      <div className="flex items-center gap-2 text-xs text-text-muted font-mono">
-                        <Code2 size={11} />
-                        <span>source.html</span>
-                        <span>·</span>
-                        <span>{linesTotal.toLocaleString()} lines</span>
-                        {diffStats && (
-                          <>
-                            <span>·</span>
-                            <span className="text-emerald-400">+{diffStats.added}</span>
-                            <span className="text-red-400">−{diffStats.removed}</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {!isEditing && codePanelTab === 'view' && (
-                    <button onClick={copyCode} className="text-xs text-text-muted hover:text-text-primary transition-colors">
-                      {copied ? '✓ Copied' : 'Copy'}
-                    </button>
-                  )}
-                </div>
-
-                {/* ── Panel body ─────────────────────────────── */}
-                <div className="flex-1 overflow-hidden flex flex-col">
-
-                  {isEditing && (
-                    <div className="flex-1 flex flex-col overflow-hidden bg-[#080b12]">
-                      {patches.length > 0 && (
-                        <div className="border-b border-white/5 px-4 py-3 flex-shrink-0 max-h-52 overflow-y-auto">
-                          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                            <Zap size={9} className="text-violet-400" />
-                            Changes Applied
-                          </p>
-                          <div className="space-y-1.5">
-                            {patches.map((p, i) => (
-                              <motion.div
-                                key={i}
-                                initial={{ opacity: 0, x: -8 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex items-start gap-2"
-                              >
-                                {p.success ? (
-                                  <CheckCircle size={11} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                                ) : (
-                                  <XCircle size={11} className="text-red-400/70 flex-shrink-0 mt-0.5" />
-                                )}
-                                <span className={`text-xs leading-relaxed ${p.success ? 'text-text-muted' : 'text-red-400/60'}`}>
-                                  {p.description}
-                                </span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex-1 overflow-auto px-4 py-3 font-mono">
-                        <p className="text-[10px] text-violet-400/50 mb-2 uppercase tracking-widest">
-                          ▸ AI patch stream
-                        </p>
-                        <pre className="text-[11px] leading-relaxed text-emerald-400/70 whitespace-pre-wrap break-all">
-                          {streamingRaw || <span className="text-violet-400/40 animate-pulse">Generating patches…</span>}
-                        </pre>
-                        <div ref={streamingEndRef} />
-                      </div>
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-base-50 z-10">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                      <p className="text-xs text-text-muted">Loading preview…</p>
                     </div>
-                  )}
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  onLoad={handleIframeLoad}
+                  className="w-full border-0"
+                  style={{ height: viewportMode !== 'desktop' ? '812px' : '100vh', display: 'block' }}
+                  title={`Preview: ${website.name}`}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
+              </div>
+            </div>
 
-                  {!isEditing && codePanelTab === 'view' && (
-                    <pre className="flex-1 overflow-auto text-xs font-mono leading-relaxed text-text-code p-4">
-                      <code>{website.source_code}</code>
-                    </pre>
-                  )}
+            {/* Code panel (side) */}
+            <AnimatePresence>
+              {showCode && (
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: '50%', opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  className="border-l border-surface-border bg-base-50 overflow-hidden flex flex-col"
+                >
+                  <CodePanelContent
+                    isEditing={isEditing}
+                    codePanelTab={codePanelTab}
+                    setCodePanelTab={setCodePanelTab}
+                    openManualEditor={openManualEditor}
+                    linesTotal={linesTotal}
+                    diffStats={diffStats}
+                    copied={copied}
+                    copyCode={copyCode}
+                    patches={patches}
+                    streamingRaw={streamingRaw}
+                    streamingEndRef={streamingEndRef}
+                    website={website}
+                    manualEditValue={manualEditValue}
+                    setManualEditValue={setManualEditValue}
+                    codeTextareaRef={codeTextareaRef}
+                    manualSaved={manualSaved}
+                    handleManualSave={handleManualSave}
+                    handleManualDiscard={handleManualDiscard}
+                    onClose={() => setShowCode(false)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
-                  {!isEditing && codePanelTab === 'edit' && (
-                    <>
-                      <textarea
-                        ref={codeTextareaRef}
-                        value={manualEditValue}
-                        onChange={(e) => setManualEditValue(e.target.value)}
-                        spellCheck={false}
-                        className="flex-1 w-full p-4 font-mono text-xs leading-relaxed text-text-code bg-transparent resize-none focus:outline-none"
-                        placeholder="Edit HTML code here…"
-                        style={{ tabSize: 2 }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Tab') {
-                            e.preventDefault();
-                            const start = e.currentTarget.selectionStart;
-                            const end = e.currentTarget.selectionEnd;
-                            const val = e.currentTarget.value;
-                            const newVal = val.slice(0, start) + '  ' + val.slice(end);
-                            setManualEditValue(newVal);
-                            setTimeout(() => {
-                              e.currentTarget.selectionStart = start + 2;
-                              e.currentTarget.selectionEnd = start + 2;
-                            }, 0);
-                          }
-                          if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
-                            e.preventDefault();
-                            handleManualSave();
-                          }
-                        }}
-                      />
+        {/* ── Mobile layout: iframe + bottom sheet ─────────── */}
+        {isMobileView && (
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            {/* iframe always full screen on mobile */}
+            <div className="flex-1 overflow-auto bg-zinc-900">
+              <div className="relative w-full h-full bg-white">
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-base-50 z-10">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                      <p className="text-xs text-text-muted">Loading preview…</p>
+                    </div>
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  onLoad={handleIframeLoad}
+                  className="w-full border-0"
+                  style={{ height: '100%', minHeight: '60vh', display: 'block' }}
+                  title={`Preview: ${website.name}`}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
+              </div>
+            </div>
 
-                      <div className="flex items-center gap-2 px-4 py-2.5 border-t border-surface-border bg-base-100 flex-shrink-0">
-                        <span className="text-xs text-text-muted flex-1">
-                          {manualEditValue.split('\n').length.toLocaleString()} lines · ⌘S to save
-                        </span>
-                        <button
-                          onClick={handleManualDiscard}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-muted hover:text-text-primary bg-base-200 hover:bg-base-300 transition-colors"
-                        >
-                          <RotateCcw size={11} /> Discard
-                        </button>
-                        <button
-                          onClick={handleManualSave}
-                          disabled={!manualEditValue.trim()}
-                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-40 hover:opacity-90 active:scale-95"
-                          style={{ background: manualSaved ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #7C5CFC, #5A3DE8)' }}
-                        >
-                          {manualSaved ? (
-                            <><Check size={11} /> Saved!</>
-                          ) : (
-                            <><Save size={11} /> Save & Apply</>
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {fullscreen && (
-            <button
-              onClick={() => setFullscreen(false)}
-              className="fixed top-4 right-4 z-50 p-2.5 rounded-xl glass text-text-muted hover:text-text-primary transition-colors"
-            >
-              <Minimize2 size={16} />
-            </button>
-          )}
-        </div>
+            {/* Code panel as bottom sheet on mobile */}
+            <AnimatePresence>
+              {showCode && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowCode(false)}
+                    className="absolute inset-0 z-30 bg-black/40"
+                  />
+                  <motion.div
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    className="absolute bottom-0 left-0 right-0 z-40 bg-base-50 border-t border-surface-border flex flex-col rounded-t-2xl overflow-hidden"
+                    style={{ height: '65vh' }}
+                  >
+                    <CodePanelContent
+                      isEditing={isEditing}
+                      codePanelTab={codePanelTab}
+                      setCodePanelTab={setCodePanelTab}
+                      openManualEditor={openManualEditor}
+                      linesTotal={linesTotal}
+                      diffStats={diffStats}
+                      copied={copied}
+                      copyCode={copyCode}
+                      patches={patches}
+                      streamingRaw={streamingRaw}
+                      streamingEndRef={streamingEndRef}
+                      website={website}
+                      manualEditValue={manualEditValue}
+                      setManualEditValue={setManualEditValue}
+                      codeTextareaRef={codeTextareaRef}
+                      manualSaved={manualSaved}
+                      handleManualSave={handleManualSave}
+                      handleManualDiscard={handleManualDiscard}
+                      onClose={() => setShowCode(false)}
+                      isMobile
+                    />
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* ── Ask AI Panel (bottom drawer) ──────────────────── */}
         <AnimatePresence>
@@ -765,7 +742,7 @@ export default function PreviewPage() {
               transition={{ duration: 0.22, ease: 'easeOut' }}
               className="border-t border-surface-border bg-base-50 overflow-hidden flex-shrink-0"
             >
-              <div className="px-4 py-3">
+              <div className="px-3 md:px-4 py-3">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-lg bg-violet-500/15 flex items-center justify-center">
@@ -800,17 +777,17 @@ export default function PreviewPage() {
                       onChange={(e) => setEditPrompt(e.target.value)}
                       onKeyDown={handleEditKeyDown}
                       disabled={isEditing}
-                      placeholder="e.g. Change the hero headline to 'Build Faster', make the CTA button green, add a testimonials section below features…"
+                      placeholder="e.g. Change the hero headline, make CTA button green, add testimonials..."
                       rows={2}
                       className="w-full px-3 py-2.5 text-sm text-text-primary bg-base-100 border border-surface-border rounded-xl resize-none focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 placeholder:text-text-muted/50 disabled:opacity-50 transition-all"
                     />
-                    <span className="absolute bottom-2 right-3 text-xs text-text-muted/40 pointer-events-none select-none">⌘↵</span>
+                    <span className="absolute bottom-2 right-3 text-xs text-text-muted/40 pointer-events-none select-none hidden sm:block">Ctrl+↵</span>
                   </div>
 
                   <button
                     onClick={handleEditSubmit}
                     disabled={!editPrompt.trim() || isEditing}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95 flex-shrink-0"
+                    className="flex items-center gap-2 px-3 md:px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95 flex-shrink-0"
                     style={{ background: 'linear-gradient(135deg, #7C5CFC, #5A3DE8)' }}
                   >
                     {isEditing ? (
@@ -827,7 +804,7 @@ export default function PreviewPage() {
                   <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 flex items-center gap-3 text-xs"
+                    className="mt-2 flex items-center gap-3 text-xs flex-wrap"
                   >
                     <CheckCircle2 size={12} className="text-emerald-400" />
                     <span className="text-emerald-400 font-medium">
@@ -854,6 +831,15 @@ export default function PreviewPage() {
         </AnimatePresence>
       </div>
 
+      {fullscreen && (
+        <button
+          onClick={() => setFullscreen(false)}
+          className="fixed top-4 right-4 z-50 p-2.5 rounded-xl glass text-text-muted hover:text-text-primary transition-colors"
+        >
+          <Minimize2 size={16} />
+        </button>
+      )}
+
       {/* ── Save & Deploy Modal ───────────────────────────────── */}
       <AnimatePresence>
         {showDeployModal && (
@@ -861,7 +847,7 @@ export default function PreviewPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center"
+            className="fixed inset-0 z-[100] flex items-center justify-center px-4"
             style={{ background: 'rgba(7,8,15,0.85)', backdropFilter: 'blur(6px)' }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowDeployModal(false); }}
           >
@@ -870,9 +856,9 @@ export default function PreviewPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.94, opacity: 0, y: 12 }}
               transition={{ duration: 0.2 }}
-              className="w-full max-w-md mx-4 rounded-2xl border border-surface-border bg-base-50 shadow-2xl overflow-hidden"
+              className="w-full max-w-md rounded-2xl border border-surface-border bg-base-50 shadow-2xl overflow-hidden"
             >
-              <div className="px-6 pt-6 pb-4 border-b border-surface-border flex items-start justify-between">
+              <div className="px-5 md:px-6 pt-5 md:pt-6 pb-4 border-b border-surface-border flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #7C5CFC22, #5A3DE822)' }}>
                     <Rocket size={18} className="text-accent-glow" />
@@ -887,7 +873,7 @@ export default function PreviewPage() {
                 </button>
               </div>
 
-              <div className="px-6 py-5">
+              <div className="px-5 md:px-6 py-5">
                 {!deploySuccess ? (
                   <>
                     <div className="mb-4">
@@ -954,5 +940,215 @@ export default function PreviewPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// ── Extracted Code Panel component ──────────────────────────────────
+interface CodePanelContentProps {
+  isEditing: boolean;
+  codePanelTab: CodePanelTab;
+  setCodePanelTab: (tab: CodePanelTab) => void;
+  openManualEditor: () => void;
+  linesTotal: number;
+  diffStats: { added: number; removed: number } | null;
+  copied: boolean;
+  copyCode: () => void;
+  patches: PatchEntry[];
+  streamingRaw: string;
+  streamingEndRef: React.RefObject<HTMLDivElement | null>;
+  website: Website;
+  manualEditValue: string;
+  setManualEditValue: (v: string) => void;
+  codeTextareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  manualSaved: boolean;
+  handleManualSave: () => void;
+  handleManualDiscard: () => void;
+  onClose: () => void;
+  isMobile?: boolean;
+}
+
+function CodePanelContent({
+  isEditing, codePanelTab, setCodePanelTab, openManualEditor,
+  linesTotal, diffStats, copied, copyCode, patches, streamingRaw,
+  streamingEndRef, website, manualEditValue, setManualEditValue,
+  codeTextareaRef, manualSaved, handleManualSave, handleManualDiscard,
+  onClose, isMobile,
+}: CodePanelContentProps) {
+  return (
+    <>
+      {/* Code panel header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-border bg-base-100 flex-shrink-0">
+        {isMobile && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-surface-border" />
+        )}
+        <div className="flex items-center gap-3 mt-1">
+          {!isEditing && (
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-base-200">
+              <button
+                onClick={() => setCodePanelTab('view')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                  codePanelTab === 'view' ? 'bg-base-50 text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <Eye size={11} /> View
+              </button>
+              <button
+                onClick={openManualEditor}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                  codePanelTab === 'edit' ? 'bg-base-50 text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <Pencil size={11} /> Edit
+              </button>
+            </div>
+          )}
+
+          {isEditing && (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-md bg-violet-500/15 flex items-center justify-center">
+                <Terminal size={10} className="text-violet-400" />
+              </div>
+              <span className="text-xs font-semibold text-violet-300">AI Editing…</span>
+              <div className="flex gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1 h-1 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+
+          {!isEditing && (
+            <div className="flex items-center gap-2 text-xs text-text-muted font-mono">
+              <Code2 size={11} />
+              <span className="hidden sm:inline">source.html ·</span>
+              <span>{linesTotal.toLocaleString()} lines</span>
+              {diffStats && (
+                <>
+                  <span>·</span>
+                  <span className="text-emerald-400">+{diffStats.added}</span>
+                  <span className="text-red-400">−{diffStats.removed}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 mt-1">
+          {!isEditing && codePanelTab === 'view' && (
+            <button onClick={copyCode} className="text-xs text-text-muted hover:text-text-primary transition-colors">
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+          )}
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors">
+            <X size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Panel body */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {isEditing && (
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#080b12]">
+            {patches.length > 0 && (
+              <div className="border-b border-white/5 px-4 py-3 flex-shrink-0 max-h-52 overflow-y-auto">
+                <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <Zap size={9} className="text-violet-400" />
+                  Changes Applied
+                </p>
+                <div className="space-y-1.5">
+                  {patches.map((p, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-start gap-2"
+                    >
+                      {p.success ? (
+                        <CheckCircle size={11} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle size={11} className="text-red-400/70 flex-shrink-0 mt-0.5" />
+                      )}
+                      <span className={`text-xs leading-relaxed ${p.success ? 'text-text-muted' : 'text-red-400/60'}`}>
+                        {p.description}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex-1 overflow-auto px-4 py-3 font-mono">
+              <p className="text-[10px] text-violet-400/50 mb-2 uppercase tracking-widest">▸ AI patch stream</p>
+              <pre className="text-[11px] leading-relaxed text-emerald-400/70 whitespace-pre-wrap break-all">
+                {streamingRaw || <span className="text-violet-400/40 animate-pulse">Generating patches…</span>}
+              </pre>
+              <div ref={streamingEndRef} />
+            </div>
+          </div>
+        )}
+
+        {!isEditing && codePanelTab === 'view' && (
+          <pre className="flex-1 overflow-auto text-xs font-mono leading-relaxed text-text-code p-4">
+            <code>{website.source_code}</code>
+          </pre>
+        )}
+
+        {!isEditing && codePanelTab === 'edit' && (
+          <>
+            <textarea
+              ref={codeTextareaRef}
+              value={manualEditValue}
+              onChange={(e) => setManualEditValue(e.target.value)}
+              spellCheck={false}
+              className="flex-1 w-full p-4 font-mono text-xs leading-relaxed text-text-code bg-transparent resize-none focus:outline-none"
+              placeholder="Edit HTML code here…"
+              style={{ tabSize: 2 }}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  const start = e.currentTarget.selectionStart;
+                  const end = e.currentTarget.selectionEnd;
+                  const val = e.currentTarget.value;
+                  const newVal = val.slice(0, start) + '  ' + val.slice(end);
+                  setManualEditValue(newVal);
+                  setTimeout(() => {
+                    e.currentTarget.selectionStart = start + 2;
+                    e.currentTarget.selectionEnd = start + 2;
+                  }, 0);
+                }
+                // Ctrl+S to save (works on both Mac and Windows)
+                if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handleManualSave();
+                }
+              }}
+            />
+            <div className="flex items-center gap-2 px-4 py-2.5 border-t border-surface-border bg-base-100 flex-shrink-0">
+              <span className="text-xs text-text-muted flex-1">
+                {manualEditValue.split('\n').length.toLocaleString()} lines · Ctrl+S to save
+              </span>
+              <button
+                onClick={handleManualDiscard}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-muted hover:text-text-primary bg-base-200 hover:bg-base-300 transition-colors"
+              >
+                <RotateCcw size={11} /> Discard
+              </button>
+              <button
+                onClick={handleManualSave}
+                disabled={!manualEditValue.trim()}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-40 hover:opacity-90 active:scale-95"
+                style={{ background: manualSaved ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #7C5CFC, #5A3DE8)' }}
+              >
+                {manualSaved ? (
+                  <><Check size={11} /> Saved!</>
+                ) : (
+                  <><Save size={11} /> Save</>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }

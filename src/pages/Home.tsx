@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Globe } from 'lucide-react';
+import { Sparkles, Globe, Menu } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import PromptInput from '../components/PromptInput';
 import StreamingOutput from '../components/StreamingOutput';
@@ -17,8 +17,8 @@ export default function Home() {
   const [streamedCode, setStreamedCode] = useState('');
   const [currentWebsite, setCurrentWebsite] = useState<Website | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Load websites from Supabase on mount
   useEffect(() => {
     storage.getAll().then(setWebsites);
   }, []);
@@ -37,7 +37,6 @@ export default function Home() {
     const id = storage.generateId();
     const name = extractWebsiteName(prompt);
 
-    // Create placeholder website entry
     const newSite: Website = {
       id,
       name,
@@ -101,13 +100,23 @@ export default function Home() {
         onPreview={handlePreview}
         onDelete={handleDelete}
         onRefresh={refreshWebsites}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-base-50/50">
+        <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-surface-border bg-base-50/50">
           <div className="flex items-center gap-3">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="md:hidden p-1.5 rounded-lg bg-base-100 hover:bg-base-200 text-text-muted hover:text-text-primary transition-colors"
+            >
+              <Menu size={18} />
+            </button>
+
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #7C5CFC, #00E5D4)' }}
@@ -118,7 +127,7 @@ export default function Home() {
               <h1 className="font-display font-bold text-base text-text-primary leading-none">
                 CobasiteAI
               </h1>
-              <p className="text-xs text-text-muted mt-0.5">Agentic Website Builder</p>
+              <p className="text-xs text-text-muted mt-0.5 hidden sm:block">Agentic Website Builder</p>
             </div>
           </div>
         </header>
@@ -126,39 +135,39 @@ export default function Home() {
         {/* Scrollable body */}
         <main className="flex-1 overflow-y-auto bg-grid-pattern">
           {status === 'idle' && websites.length === 0 ? (
-            // Empty state hero
-            <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+            <div className="flex flex-col items-center justify-center h-full px-4 md:px-6 text-center">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                className="max-w-xl"
+                className="max-w-xl w-full"
               >
                 {/* Glow orb */}
-                <div className="relative mx-auto w-24 h-24 mb-8">
+                <div className="relative mx-auto w-20 h-20 md:w-24 md:h-24 mb-6 md:mb-8">
                   <div
                     className="absolute inset-0 rounded-full opacity-30 animate-pulse"
                     style={{ background: 'radial-gradient(circle, #7C5CFC 0%, transparent 70%)' }}
                   />
                   <div
-                    className="relative w-24 h-24 rounded-full flex items-center justify-center"
+                    className="relative w-full h-full rounded-full flex items-center justify-center"
                     style={{ background: 'linear-gradient(135deg, #7C5CFC20, #00E5D420)', border: '1px solid #7C5CFC40' }}
                   >
-                    <Sparkles size={36} className="text-accent-glow" />
+                    <Sparkles size={30} className="text-accent-glow md:hidden" />
+                    <Sparkles size={36} className="text-accent-glow hidden md:block" />
                   </div>
                 </div>
 
-                <h2 className="font-display text-3xl font-bold text-text-primary mb-3">
+                <h2 className="font-display text-2xl md:text-3xl font-bold text-text-primary mb-3">
                   Describe Your{' '}
                   <span className="text-gradient-accent">Dream Website</span>
                 </h2>
-                <p className="text-text-secondary text-base leading-relaxed mb-8">
+                <p className="text-text-secondary text-sm md:text-base leading-relaxed mb-6 md:mb-8">
                   CobasiteAI adalah agentic website builder yang mengubah deskripsi teks kamu
                   menjadi website full HTML yang siap pakai — lengkap dengan desain, animasi,
                   dan konten yang compelling.
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
                   {[
                     { icon: '🎨', label: 'Custom Design', desc: 'Tema, warna & font sesuai keinginan' },
                     { icon: '⚡', label: 'Instant Preview', desc: 'Preview langsung di browser' },
@@ -177,9 +186,7 @@ export default function Home() {
               </motion.div>
             </div>
           ) : (
-            // History + active generation
-            <div className="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-4">
-              {/* Previous websites quick access */}
+            <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-6 flex flex-col gap-4">
               {websites.length > 0 && status === 'idle' && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -212,14 +219,13 @@ export default function Home() {
                         <span className="px-1.5 py-0.5 rounded bg-accent-muted text-accent-glow font-mono">
                           {site.source_code.length.toLocaleString()} chars
                         </span>
-                        <span>· Click to preview</span>
+                        <span>· Tap to preview</span>
                       </div>
                     </motion.div>
                   ))}
                 </motion.div>
               )}
 
-              {/* Active streaming output */}
               {status !== 'idle' && (
                 <StreamingOutput
                   status={status}
@@ -234,7 +240,7 @@ export default function Home() {
         </main>
 
         {/* Bottom prompt area */}
-        <div className="border-t border-surface-border bg-base-50/80 backdrop-blur px-6 py-4">
+        <div className="border-t border-surface-border bg-base-50/80 backdrop-blur px-3 md:px-6 py-3 md:py-4">
           <div className="max-w-4xl mx-auto">
             <PromptInput onSubmit={handleGenerate} status={status} />
           </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe,
@@ -9,10 +9,11 @@ import {
   Code2,
   PanelLeftClose,
   PanelLeft,
+  X,
 } from 'lucide-react';
 import type { Website } from '../types';
 import { storage } from '../lib/storage';
-import UserMenu from './UserMenu'; // ← TAMBAHAN
+import UserMenu from './UserMenu';
 
 interface SidebarProps {
   websites: Website[];
@@ -21,6 +22,8 @@ interface SidebarProps {
   onPreview: (id: string) => void;
   onDelete: (id: string) => void;
   onRefresh?: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export default function Sidebar({
@@ -29,10 +32,21 @@ export default function Sidebar({
   onSelect,
   onPreview,
   onDelete,
+  mobileOpen = false,
+  onMobileClose,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
 
   const handleDelete = async (id: string) => {
     if (confirmDelete === id) {
@@ -50,16 +64,11 @@ export default function Sidebar({
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  return (
-    <motion.aside
-      animate={{ width: collapsed ? 56 : 280 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="relative flex flex-col h-full bg-base-50 border-r border-surface-border overflow-hidden flex-shrink-0"
-    >
-      {/* ── Header ─────────────────────────────────────────── */}
+  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+    <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-4 border-b border-surface-border">
         <AnimatePresence>
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -79,19 +88,27 @@ export default function Sidebar({
           )}
         </AnimatePresence>
 
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="p-1.5 rounded-md text-text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors ml-auto"
-        >
-          {collapsed ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
-        </button>
+        {isMobile ? (
+          <button
+            onClick={onMobileClose}
+            className="p-1.5 rounded-md text-text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors ml-auto"
+          >
+            <X size={16} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="p-1.5 rounded-md text-text-muted hover:text-text-secondary hover:bg-surface-hover transition-colors ml-auto"
+          >
+            {collapsed ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
+          </button>
+        )}
       </div>
 
-      {/* ── Website List ────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto py-2">
         {websites.length === 0 ? (
           <AnimatePresence>
-            {!collapsed && (
+            {(!collapsed || isMobile) && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -123,7 +140,7 @@ export default function Sidebar({
                     : 'hover:bg-surface-hover border border-transparent'
                 }`}
               >
-                {collapsed ? (
+                {(collapsed && !isMobile) ? (
                   <button
                     onClick={() => onSelect(site.id)}
                     className="w-full flex items-center justify-center p-3"
@@ -136,7 +153,10 @@ export default function Sidebar({
                   </button>
                 ) : (
                   <div className="p-2.5">
-                    <button onClick={() => onSelect(site.id)} className="w-full text-left">
+                    <button
+                      onClick={() => { onSelect(site.id); if (isMobile) onMobileClose?.(); }}
+                      className="w-full text-left"
+                    >
                       <div className="flex items-start gap-2.5">
                         <div
                           className={`mt-0.5 w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
@@ -168,9 +188,8 @@ export default function Sidebar({
                       </div>
                     </button>
 
-                    {/* Action buttons */}
                     <AnimatePresence>
-                      {(hoverId === site.id || activeId === site.id) && (
+                      {(hoverId === site.id || activeId === site.id || isMobile) && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
@@ -178,7 +197,11 @@ export default function Sidebar({
                           className="flex gap-1 mt-2 pt-2 border-t border-surface-border overflow-hidden"
                         >
                           <button
-                            onClick={(e) => { e.stopPropagation(); onPreview(site.id); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onPreview(site.id);
+                              if (isMobile) onMobileClose?.();
+                            }}
                             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-accent-muted hover:bg-accent/25 text-accent-glow text-xs font-medium transition-colors"
                           >
                             <Eye size={11} />
@@ -206,10 +229,46 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── Footer: User Menu ───────────────────────────────── */}
-      <div className={`border-t border-surface-border ${collapsed ? 'p-2' : 'p-3'}`}>
-        <UserMenu collapsed={collapsed} />
+      <div className={`border-t border-surface-border ${(collapsed && !isMobile) ? 'p-2' : 'p-3'}`}>
+        <UserMenu collapsed={collapsed && !isMobile} />
       </div>
-    </motion.aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <motion.aside
+        animate={{ width: collapsed ? 56 : 280 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        className="hidden md:flex relative flex-col h-full bg-base-50 border-r border-surface-border overflow-hidden flex-shrink-0"
+      >
+        <SidebarContent />
+      </motion.aside>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onMobileClose}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              className="fixed inset-y-0 left-0 z-50 w-72 bg-base-50 border-r border-surface-border flex flex-col md:hidden"
+            >
+              <SidebarContent isMobile />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
