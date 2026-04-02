@@ -1,12 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, Globe, Zap } from 'lucide-react';
+import { Sparkles, Globe } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import PromptInput from '../components/PromptInput';
 import StreamingOutput from '../components/StreamingOutput';
 import type { Website, GenerationStatus } from '../types';
-import { ENV } from '../lib/env';
 import { storage } from '../lib/storage';
 import { generateWebsite, extractWebsiteName } from '../lib/ai';
 
@@ -121,11 +120,6 @@ export default function Home() {
               </h1>
               <p className="text-xs text-text-muted mt-0.5">Agentic Website Builder</p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-text-muted">
-            <Zap size={11} className="text-accent-glow" />
-            <span>{ENV.model}</span>
           </div>
         </header>
 

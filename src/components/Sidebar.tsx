@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { Website } from '../types';
 import { storage } from '../lib/storage';
+import UserMenu from './UserMenu'; // ← TAMBAHAN
 
 interface SidebarProps {
   websites: Website[];
@@ -28,7 +29,6 @@ export default function Sidebar({
   onSelect,
   onPreview,
   onDelete,
-  // onRefresh,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export default function Sidebar({
 
   const handleDelete = async (id: string) => {
     if (confirmDelete === id) {
-      await storage.delete(id);  // ← tambah await
+      await storage.delete(id);
       onDelete(id);
       setConfirmDelete(null);
     } else {
@@ -44,6 +44,7 @@ export default function Sidebar({
       setTimeout(() => setConfirmDelete(null), 2500);
     }
   };
+
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -55,7 +56,7 @@ export default function Sidebar({
       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className="relative flex flex-col h-full bg-base-50 border-r border-surface-border overflow-hidden flex-shrink-0"
     >
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-3 py-4 border-b border-surface-border">
         <AnimatePresence>
           {!collapsed && (
@@ -86,7 +87,7 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Website List */}
+      {/* ── Website List ────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto py-2">
         {websites.length === 0 ? (
           <AnimatePresence>
@@ -135,10 +136,7 @@ export default function Sidebar({
                   </button>
                 ) : (
                   <div className="p-2.5">
-                    <button
-                      onClick={() => onSelect(site.id)}
-                      className="w-full text-left"
-                    >
+                    <button onClick={() => onSelect(site.id)} className="w-full text-left">
                       <div className="flex items-start gap-2.5">
                         <div
                           className={`mt-0.5 w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
@@ -208,24 +206,10 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Footer */}
-      <AnimatePresence>
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="p-3 border-t border-surface-border"
-          >
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-teal-accent animate-pulse" />
-              <span className="text-xs text-text-muted">
-                Powered by Qwen3
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Footer: User Menu ───────────────────────────────── */}
+      <div className={`border-t border-surface-border ${collapsed ? 'p-2' : 'p-3'}`}>
+        <UserMenu collapsed={collapsed} />
+      </div>
     </motion.aside>
   );
 }
