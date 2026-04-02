@@ -55,7 +55,14 @@ export const storage = {
       .eq('page_name', page_name)
       .single();
 
-    if (error) { console.error('getByPageName error:', error); return null; }
+    if (error) {
+      // PGRST116 = no rows returned (normal "not found")
+      // Selain itu = bisa jadi permission error
+      if (error.code !== 'PGRST116') {
+        console.error('getByPageName unexpected error:', error.code, error.message);
+      }
+      return null;
+    }
     return data;
   },
 

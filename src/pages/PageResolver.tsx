@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { storage } from '../lib/storage';
 import type { Website } from '../types';
 
@@ -13,7 +13,6 @@ import type { Website } from '../types';
  */
 export default function PageResolver() {
   const { page_name } = useParams<{ page_name: string }>();
-  const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [website, setWebsite] = useState<Website | null>(null);
@@ -60,14 +59,6 @@ export default function PageResolver() {
           <code className="text-accent-glow font-mono">/{page_name}</code>{' '}
           was found. Make sure the page has been deployed.
         </p>
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg, #7C5CFC, #5A3DE8)' }}
-        >
-          <ArrowLeft size={14} />
-          Back to CobasiteAI
-        </button>
       </div>
     );
   }
