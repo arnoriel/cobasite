@@ -229,7 +229,7 @@ export interface StreamCallbacks {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const MAX_CONTINUATIONS = 3;
+const MAX_CONTINUATIONS = 1;
 
 /** Returns true only when the HTML is properly closed. */
 function isHtmlComplete(html: string): boolean {
@@ -269,7 +269,7 @@ async function streamOnce(
       stream: true,
       // Raise the ceiling so full pages fit in a single shot most of the time.
       // Auto-continuation below handles the rare cases that still overflow.
-      max_tokens: 32000,
+      max_tokens: 20000,
       temperature,
       messages,
     }),
