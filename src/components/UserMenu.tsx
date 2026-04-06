@@ -14,7 +14,6 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
   const [loggingOut, setLoggingOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Tutup dropdown kalau klik di luar
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -43,25 +42,23 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
   const initials = name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   const provider = user.app_metadata?.provider as string | undefined;
 
-  // ── Collapsed mode: cuma avatar kecil ──────────────────────
   if (collapsed) {
     return (
       <div ref={ref} className="relative flex items-center justify-center">
         <button
           onClick={() => setOpen((o) => !o)}
           title={name}
-          className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-surface-border hover:ring-accent/50 transition-all"
+          className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-surface-border hover:ring-accent/40 transition-all"
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-accent-muted flex items-center justify-center">
-              <span className="text-[10px] font-bold text-accent-glow">{initials}</span>
+              <span className="text-[10px] font-bold text-accent">{initials}</span>
             </div>
           )}
         </button>
 
-        {/* Mini popup untuk collapsed mode */}
         <AnimatePresence>
           {open && (
             <motion.div
@@ -69,15 +66,9 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: -8, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute bottom-0 left-full ml-2 w-52 bg-base-50 border border-surface-border rounded-xl shadow-card-hover overflow-hidden z-50"
+              className="absolute bottom-0 left-full ml-2 w-56 bg-white border border-surface-border rounded-2xl shadow-card-hover overflow-hidden z-50"
             >
-              <ProfileCard
-                name={name}
-                email={email}
-                initials={initials}
-                avatarUrl={avatarUrl}
-                provider={provider}
-              />
+              <ProfileCard name={name} email={email} initials={initials} avatarUrl={avatarUrl} provider={provider} />
               <LogoutButton loggingOut={loggingOut} onLogout={handleLogout} />
             </motion.div>
           )}
@@ -86,28 +77,24 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
     );
   }
 
-  // ── Expanded mode: row clickable ────────────────────────────
   return (
     <div ref={ref} className="relative">
-      {/* Trigger row */}
       <button
         onClick={() => setOpen((o) => !o)}
         className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all group ${
-          open ? 'bg-surface-hover' : 'hover:bg-surface-hover'
+          open ? 'bg-base-100' : 'hover:bg-base-50'
         }`}
       >
-        {/* Avatar */}
-        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-surface-border group-hover:ring-accent/40 transition-all">
+        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-1 ring-surface-border group-hover:ring-accent/30 transition-all">
           {avatarUrl ? (
             <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-accent-muted flex items-center justify-center">
-              <span className="text-[10px] font-bold text-accent-glow">{initials}</span>
+              <span className="text-[10px] font-bold text-accent">{initials}</span>
             </div>
           )}
         </div>
 
-        {/* Name & email */}
         <div className="flex-1 min-w-0 text-left">
           <p className="text-xs font-semibold text-text-primary truncate leading-tight">{name}</p>
           <p className="text-[10px] text-text-muted truncate">{email}</p>
@@ -119,7 +106,6 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
         />
       </button>
 
-      {/* Dropdown popup */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -127,15 +113,9 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 right-0 mb-2 bg-base-50 border border-surface-border rounded-xl shadow-card-hover overflow-hidden z-50"
+            className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-surface-border rounded-2xl shadow-card-hover overflow-hidden z-50"
           >
-            <ProfileCard
-              name={name}
-              email={email}
-              initials={initials}
-              avatarUrl={avatarUrl}
-              provider={provider}
-            />
+            <ProfileCard name={name} email={email} initials={initials} avatarUrl={avatarUrl} provider={provider} />
             <LogoutButton loggingOut={loggingOut} onLogout={handleLogout} />
           </motion.div>
         )}
@@ -144,63 +124,41 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
   );
 }
 
-// ── Sub-components ──────────────────────────────────────────────────
-
-function Avatar({
-  avatarUrl,
-  initials,
-  name,
-  size = 'md',
-}: {
-  avatarUrl?: string;
-  initials: string;
-  name: string;
-  size?: 'sm' | 'md' | 'lg';
+function Avatar({ avatarUrl, initials, name, size = 'md' }: {
+  avatarUrl?: string; initials: string; name: string; size?: 'sm' | 'md' | 'lg';
 }) {
-  const sizeClass = size === 'lg' ? 'w-12 h-12' : size === 'sm' ? 'w-7 h-7' : 'w-9 h-9';
+  const sizeClass = size === 'lg' ? 'w-11 h-11' : size === 'sm' ? 'w-7 h-7' : 'w-9 h-9';
   return (
     <div className={`${sizeClass} rounded-full overflow-hidden flex-shrink-0 ring-2 ring-surface-border`}>
       {avatarUrl ? (
         <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full bg-accent-muted flex items-center justify-center">
-          <span className="text-xs font-bold text-accent-glow">{initials}</span>
+          <span className="text-xs font-bold text-accent">{initials}</span>
         </div>
       )}
     </div>
   );
 }
 
-function ProfileCard({
-  name,
-  email,
-  initials,
-  avatarUrl,
-  provider,
-}: {
-  name: string;
-  email: string;
-  initials: string;
-  avatarUrl?: string;
-  provider?: string;
+function ProfileCard({ name, email, initials, avatarUrl, provider }: {
+  name: string; email: string; initials: string; avatarUrl?: string; provider?: string;
 }) {
   return (
     <div className="p-4 border-b border-surface-border">
-      {/* Avatar besar + info */}
       <div className="flex items-center gap-3 mb-3">
         <Avatar avatarUrl={avatarUrl} initials={initials} name={name} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-text-primary truncate leading-tight">{name}</p>
+          <p className="text-sm font-semibold text-text-primary truncate">{name}</p>
           <div className="flex items-center gap-1 mt-0.5">
-            <Mail size={9} className="text-text-muted flex-shrink-0" />
+            <Mail size={9} className="text-text-muted" />
             <p className="text-[10px] text-text-muted truncate">{email}</p>
           </div>
         </div>
       </div>
 
-      {/* Provider badge */}
       {provider && (
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-base-100 border border-surface-border w-fit">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-base-50 border border-surface-border w-fit mb-2">
           {provider === 'google' ? (
             <svg width="10" height="10" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -217,13 +175,12 @@ function ProfileCard({
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="flex items-center gap-1.5 mt-2.5">
-        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/10 border border-green-500/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-[10px] text-green-400 font-medium">Online</span>
+      <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-100">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] text-emerald-600 font-semibold">Online</span>
         </div>
-        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-base-100 border border-surface-border">
+        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-base-50 border border-surface-border">
           <User size={9} className="text-text-muted" />
           <span className="text-[10px] text-text-muted font-medium">Free Plan</span>
         </div>
@@ -232,21 +189,15 @@ function ProfileCard({
   );
 }
 
-function LogoutButton({
-  loggingOut,
-  onLogout,
-}: {
-  loggingOut: boolean;
-  onLogout: () => void;
-}) {
+function LogoutButton({ loggingOut, onLogout }: { loggingOut: boolean; onLogout: () => void; }) {
   return (
     <button
       onClick={onLogout}
       disabled={loggingOut}
-      className="w-full flex items-center gap-2.5 px-4 py-3 text-red-400 hover:bg-red-500/8 transition-colors disabled:opacity-50 group"
+      className="w-full flex items-center gap-2.5 px-4 py-3 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 group"
     >
-      <div className="w-6 h-6 rounded-md bg-red-500/10 group-hover:bg-red-500/15 flex items-center justify-center transition-colors flex-shrink-0">
-        <LogOut size={12} className="text-red-400" />
+      <div className="w-6 h-6 rounded-lg bg-red-50 group-hover:bg-red-100 border border-red-100 flex items-center justify-center transition-colors flex-shrink-0">
+        <LogOut size={12} className="text-red-500" />
       </div>
       <span className="text-xs font-semibold">
         {loggingOut ? 'Keluar…' : 'Keluar dari akun'}
